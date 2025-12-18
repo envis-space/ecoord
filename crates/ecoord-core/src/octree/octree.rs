@@ -1,7 +1,7 @@
 use crate::AxisAlignedBoundingBox;
 use crate::coords::bounding_box::HasAabb;
 use crate::coords::error::Error;
-use crate::octree::{OctantIndex, OctreeBounds, OctreeOccupancyGraph};
+use crate::octree::{OctantIndex, OctreeBounds, OctreeOccupancyGraph, StorageMode};
 use nalgebra::Point3;
 use rand::SeedableRng;
 use rand::prelude::{SliceRandom, StdRng};
@@ -20,10 +20,15 @@ impl<T: HasAabb + Sync + Send + Clone + 'static + Debug> Octree<T> {
     pub fn new(
         items: Vec<T>,
         max_items_per_octant: usize,
+        storage_mode: StorageMode,
         shuffle_seed_number: Option<u64>,
     ) -> Result<Self, crate::Error> {
-        let (bounds, occupancy_graph, items_per_octant) =
-            compute_octree(items, max_items_per_octant, shuffle_seed_number)?;
+        let (bounds, occupancy_graph, items_per_octant) = compute_octree(
+            items,
+            max_items_per_octant,
+            storage_mode,
+            shuffle_seed_number,
+        )?;
 
         Ok(Self {
             bounds,
@@ -83,6 +88,7 @@ impl<T: HasAabb + Sync + Send + Clone + 'static + Debug> Octree<T> {
     }
 }
 
+#[derive(Eq, PartialEq, Debug, Clone, Hash, Ord, PartialOrd)]
 struct IntermediateResult<'a, T: HasAabb> {
     octant_index: OctantIndex,
     assigned_items: Option<Vec<&'a T>>,
@@ -92,6 +98,7 @@ struct IntermediateResult<'a, T: HasAabb> {
 fn compute_octree<T: HasAabb + Sync + Send + Clone + 'static + Debug>(
     mut items: Vec<T>,
     max_items_per_octant: usize,
+    storage_mode: StorageMode,
     shuffle_seed_number: Option<u64>,
 ) -> Result<
     (
@@ -104,13 +111,20 @@ fn compute_octree<T: HasAabb + Sync + Send + Clone + 'static + Debug>(
     let octree_bounds = derive_octree_bounds(&items)?;
     let mut occupancy_graph = OctreeOccupancyGraph::new();
 
-    shuffle_items_if_needed(&mut items, shuffle_seed_number);
+    if let Some(seed_number) = shuffle_seed_number {
+        shuffle_items(&mut items, seed_number);
+    }
 
     let mut pending_items = initialize_pending_items(&items);
     let mut final_items: HashMap<OctantIndex, Vec<&T>> = HashMap::new();
 
     while !pending_items.is_empty() {
-        let results = sub_divide(pending_items, &octree_bounds, max_items_per_octant);
+        let results = sub_divide(
+            pending_items,
+            &octree_bounds,
+            max_items_per_octant,
+            storage_mode,
+        );
 
         results
             .iter()
@@ -182,11 +196,9 @@ fn derive_octree_bounds<T: HasAabb + Clone>(items: &[T]) -> Result<OctreeBounds,
     Ok(octree_bounds)
 }
 
-fn shuffle_items_if_needed<T>(items: &mut Vec<T>, shuffle_seed_number: Option<u64>) {
-    if let Some(seed_number) = shuffle_seed_number {
-        let mut rng = StdRng::seed_from_u64(seed_number);
-        items.shuffle(&mut rng);
-    }
+fn shuffle_items<T>(items: &mut Vec<T>, seed_number: u64) {
+    let mut rng = StdRng::seed_from_u64(seed_number);
+    items.shuffle(&mut rng);
 }
 
 fn initialize_pending_items<T>(items: &[T]) -> HashMap<Option<OctantIndex>, Vec<&T>> {
@@ -199,47 +211,94 @@ fn sub_divide<'a, T: HasAabb + Sync + Send>(
     pending_items: HashMap<Option<OctantIndex>, Vec<&'a T>>,
     octree_bounds: &'a OctreeBounds,
     max_items_per_octant: usize,
+    storage_mode: StorageMode,
 ) -> Vec<IntermediateResult<'a, T>> {
-    let current_octant_indices: Vec<(Option<OctantIndex>, OctantIndex)> =
+    let parent_child_octant_index_pairs: Vec<(Option<OctantIndex>, OctantIndex)> =
         get_child_pairs(&pending_items.keys().copied().collect());
 
-    let results: Vec<IntermediateResult<T>> = current_octant_indices
+    let results: Vec<IntermediateResult<T>> = parent_child_octant_index_pairs
         .par_iter()
         .map(
             |(current_parent_octant_index, current_child_octant_index)| {
-                let current_bounding_cube =
-                    octree_bounds.get_octant_bounding_cube(*current_child_octant_index);
-                let pending_items_for_octant = pending_items
-                    .get(current_parent_octant_index)
-                    .expect("should exist");
-
-                let mut items_within_cube: Vec<&T> = pending_items_for_octant
-                    .iter()
-                    .filter(|x| current_bounding_cube.contains_point(&x.center()))
-                    .copied()
-                    .collect();
-                let remaining_items: Option<Vec<&T>> =
-                    if items_within_cube.len() > max_items_per_octant {
-                        Some(items_within_cube.split_off(max_items_per_octant))
-                    } else {
-                        None
-                    };
-                let assigned_items = if items_within_cube.is_empty() {
-                    None
-                } else {
-                    Some(items_within_cube)
-                };
-
-                IntermediateResult {
-                    octant_index: *current_child_octant_index,
-                    assigned_items,
-                    remaining_items,
-                }
+                process_octant(
+                    *current_parent_octant_index,
+                    *current_child_octant_index,
+                    &pending_items,
+                    octree_bounds,
+                    max_items_per_octant,
+                    storage_mode,
+                )
             },
         )
         .collect();
 
     results
+}
+
+fn process_octant<'a, T: HasAabb>(
+    current_parent_octant_index: Option<OctantIndex>,
+    current_child_octant_index: OctantIndex,
+    pending_items: &HashMap<Option<OctantIndex>, Vec<&'a T>>,
+    octree_bounds: &OctreeBounds,
+    max_items_per_octant: usize,
+    storage_mode: StorageMode,
+) -> IntermediateResult<'a, T> {
+    let current_bounding_cube = octree_bounds.get_octant_bounding_cube(current_child_octant_index);
+    let pending_items_for_octant = pending_items
+        .get(&current_parent_octant_index)
+        .expect("should exist");
+
+    let mut items_within_cube: Vec<&T> = pending_items_for_octant
+        .iter()
+        .filter(|x| current_bounding_cube.contains_point(&x.center()))
+        .copied()
+        .collect();
+
+    let remaining_items: Option<Vec<&T>> = match storage_mode {
+        StorageMode::AllOctants => {
+            if items_within_cube.len() > max_items_per_octant {
+                Some(items_within_cube.split_off(max_items_per_octant))
+            } else {
+                None
+            }
+        }
+        StorageMode::AllOctantsWithPropagation => {
+            unimplemented!("not yet implemented")
+        }
+        StorageMode::LeafOctantsOnly => {
+            if items_within_cube.len() > max_items_per_octant {
+                Some(items_within_cube.clone())
+            } else {
+                None
+            }
+        }
+    };
+
+    let assigned_items = match storage_mode {
+        StorageMode::AllOctants => {
+            if items_within_cube.is_empty() {
+                None
+            } else {
+                Some(items_within_cube)
+            }
+        }
+        StorageMode::AllOctantsWithPropagation => {
+            unimplemented!("not yet implemented")
+        }
+        StorageMode::LeafOctantsOnly => {
+            if !items_within_cube.is_empty() && items_within_cube.len() <= max_items_per_octant {
+                Some(items_within_cube)
+            } else {
+                None
+            }
+        }
+    };
+
+    IntermediateResult {
+        octant_index: current_child_octant_index,
+        assigned_items,
+        remaining_items,
+    }
 }
 
 fn get_child_pairs(

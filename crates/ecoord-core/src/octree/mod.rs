@@ -1,6 +1,7 @@
 mod bounds;
 mod graph;
 mod index;
+mod mode;
 mod octree;
 
 #[doc(inline)]
@@ -17,3 +18,6 @@ pub use crate::octree::bounds::OctreeBounds;
 
 #[doc(inline)]
 pub use crate::octree::octree::Octree;
+
+#[doc(inline)]
+pub use crate::octree::mode::StorageMode;

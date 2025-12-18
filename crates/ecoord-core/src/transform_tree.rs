@@ -168,7 +168,7 @@ impl TransformTree {
             .into_iter()
             .map(|x| match self.edges.get(&x).expect("must exist") {
                 TransformEdge::Static(x) => Ok(x.transform),
-                TransformEdge::Dynamic(x) => Err(ContainsDynamicTransform()),
+                TransformEdge::Dynamic(_x) => Err(ContainsDynamicTransform()),
             })
             .collect::<Result<Vec<Transform>, Error>>()?;
 
