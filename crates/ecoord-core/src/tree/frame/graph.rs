@@ -1,7 +1,7 @@
 use crate::Error;
 use crate::Error::{InvalidFrameId, MultipleTransformPaths, NoTransformPath};
-use crate::frames::FrameId;
-use crate::transform::TransformId;
+use crate::tree::frame::frames::FrameId;
+use crate::tree::transform::TransformId;
 use itertools::Itertools;
 use petgraph::data::DataMap;
 use petgraph::graph::NodeIndex;
@@ -144,7 +144,7 @@ impl FrameGraph {
 
 #[cfg(test)]
 mod test_graph {
-    use crate::frame_graph::FrameGraph;
+    use crate::tree::frame::graph::FrameGraph;
     use crate::{FrameId, TransformId};
 
     use std::collections::{HashMap, HashSet};

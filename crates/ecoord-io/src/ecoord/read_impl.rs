@@ -1,12 +1,13 @@
 use crate::error::Error;
 use ecoord_core::{
-    DynamicTransform, FrameId, FrameInfo, StaticTransform, TimedTransform, Transform,
-    TransformEdge, TransformId, TransformTree,
+    DynamicTransform, FrameId, FrameInfo, StaticTransform, TimedTransform, TransformEdge,
+    TransformId, TransformTree,
 };
 use std::collections::HashMap;
 
 use crate::ecoord::documents::TransformTreeSerde;
 use chrono::{DateTime, Utc};
+use ecoord_core::tree::transform::Transform;
 use nalgebra::{Isometry3, Quaternion, UnitQuaternion, Vector3};
 use std::io::Read;
 

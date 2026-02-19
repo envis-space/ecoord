@@ -1,79 +1,14 @@
 use crate::Error::NoTransforms;
-use crate::{
-    Error, ExtrapolationMethod, FrameId, InterpolationMethod, TimedTransform, Transform,
-    TransformId,
-};
+use crate::tree::transform::Transform;
+use crate::tree::transform::TransformId;
+use crate::{Error, ExtrapolationMethod, FrameId, InterpolationMethod, TimedTransform};
 use chrono::{DateTime, Utc};
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum TransformEdge {
-    Static(StaticTransform),
-    Dynamic(DynamicTransform),
-}
-
-impl TransformEdge {
-    pub fn at_time(&self, timestamp: DateTime<Utc>) -> Transform {
-        match self {
-            TransformEdge::Static(s) => s.transform,
-            TransformEdge::Dynamic(d) => d.interpolate(timestamp),
-        }
-    }
-
-    pub fn parent_frame_id(&self) -> &FrameId {
-        match self {
-            TransformEdge::Static(s) => &s.parent_frame_id,
-            TransformEdge::Dynamic(d) => &d.parent_frame_id,
-        }
-    }
-
-    pub fn child_frame_id(&self) -> &FrameId {
-        match self {
-            TransformEdge::Static(s) => &s.child_frame_id,
-            TransformEdge::Dynamic(d) => &d.child_frame_id,
-        }
-    }
-
-    pub fn transform_id(&self) -> TransformId {
-        match self {
-            TransformEdge::Static(s) => s.transform_id(),
-            TransformEdge::Dynamic(d) => d.transform_id(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct StaticTransform {
-    parent_frame_id: FrameId,
-    child_frame_id: FrameId,
-    pub transform: Transform,
-}
-
-impl StaticTransform {
-    pub fn new(parent_frame_id: FrameId, child_frame_id: FrameId, transform: Transform) -> Self {
-        Self {
-            parent_frame_id,
-            child_frame_id,
-            transform,
-        }
-    }
-
-    pub fn parent_frame_id(&self) -> &FrameId {
-        &self.parent_frame_id
-    }
-
-    pub fn child_frame_id(&self) -> &FrameId {
-        &self.child_frame_id
-    }
-
-    pub fn transform_id(&self) -> TransformId {
-        TransformId::new(self.parent_frame_id.clone(), self.child_frame_id.clone())
-    }
-}
+use nalgebra::Isometry3;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DynamicTransform {
-    parent_frame_id: FrameId,
-    child_frame_id: FrameId,
+    pub(crate) parent_frame_id: FrameId,
+    pub(crate) child_frame_id: FrameId,
     pub interpolation: Option<InterpolationMethod>,
     pub extrapolation: Option<ExtrapolationMethod>,
     pub samples: Vec<TimedTransform>,
@@ -135,6 +70,18 @@ impl DynamicTransform {
             .last()
             .expect("must at least have one sample")
             .timestamp
+    }
+
+    pub fn prepend_isometry(&mut self, m: &Isometry3<f64>) {
+        self.samples
+            .iter_mut()
+            .for_each(|x| x.transform.prepend_isometry(m));
+    }
+
+    pub fn append_isometry(&mut self, m: &Isometry3<f64>) {
+        self.samples
+            .iter_mut()
+            .for_each(|x| x.transform.append_isometry(m));
     }
 }
 

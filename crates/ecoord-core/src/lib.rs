@@ -1,47 +1,42 @@
 mod coords;
 mod error;
-mod frame_graph;
-mod frames;
 pub mod octree;
 mod ops;
-mod transform;
-mod transform_edge;
-mod transform_info;
-pub mod transform_tree;
+pub mod tree;
 mod utils;
 
 #[doc(inline)]
-pub use crate::transform_tree::TransformTree;
+pub use tree::tree::TransformTree;
 
 #[doc(inline)]
-pub use crate::transform::TransformId;
+pub use tree::transform::TransformId;
 
 #[doc(inline)]
-pub use crate::transform::Transform;
+pub use tree::transform::Transform;
 
 #[doc(inline)]
-pub use crate::transform::TimedTransform;
+pub use tree::transform::TimedTransform;
 
 #[doc(inline)]
-pub use crate::frames::FrameId;
+pub use tree::frame::frames::FrameId;
 
 #[doc(inline)]
-pub use crate::frames::FrameInfo;
+pub use tree::frame::frames::FrameInfo;
 
 #[doc(inline)]
-pub use crate::transform_edge::TransformEdge;
+pub use tree::edge::transform_edge::TransformEdge;
 
 #[doc(inline)]
-pub use crate::transform_edge::DynamicTransform;
+pub use tree::edge::dynamic_transform::DynamicTransform;
 
 #[doc(inline)]
-pub use crate::transform_edge::StaticTransform;
+pub use tree::edge::static_transform::StaticTransform;
 
 #[doc(inline)]
-pub use crate::transform_info::InterpolationMethod;
+pub use crate::tree::interpolation::InterpolationMethod;
 
 #[doc(inline)]
-pub use crate::transform_info::ExtrapolationMethod;
+pub use crate::tree::interpolation::ExtrapolationMethod;
 
 #[doc(inline)]
 pub use crate::ops::merge::merge;

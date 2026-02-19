@@ -1,14 +1,14 @@
 use crate::error::Error;
-use crate::frames::{FrameId, FrameInfo};
-use crate::transform::TransformId;
+use crate::tree::frame::frames::{FrameId, FrameInfo};
 
 use crate::Error::ContainsDynamicTransform;
-use crate::frame_graph::FrameGraph;
-use crate::transform_edge::TransformEdge;
-use crate::{DynamicTransform, StaticTransform, TimedTransform, Transform};
+use crate::tree::edge::transform_edge::TransformEdge;
+use crate::tree::frame::graph::FrameGraph;
+use crate::tree::transform::Transform;
+use crate::tree::transform::TransformId;
+use crate::{DynamicTransform, StaticTransform, TimedTransform};
 use chrono::{DateTime, Utc};
 use nalgebra::Isometry3;
-use rayon::iter::ParallelIterator;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone, Default)]
@@ -67,6 +67,10 @@ impl TransformTree {
 
     pub fn edges(&self) -> &HashMap<TransformId, TransformEdge> {
         &self.edges
+    }
+
+    pub fn edges_mut(&mut self) -> &mut HashMap<TransformId, TransformEdge> {
+        &mut self.edges
     }
 
     pub fn frames(&self) -> &HashMap<FrameId, FrameInfo> {

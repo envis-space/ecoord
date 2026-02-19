@@ -56,6 +56,5 @@ pub use ecoord_core::{
     TimedTransform, Transform, TransformEdge, TransformId, TransformTree, UnitSphericalPoint3,
     merge, octree,
 };
-
 pub use ecoord_io as io;
 pub use ecoord_transform as transform;

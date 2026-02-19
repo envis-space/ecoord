@@ -1,4 +1,4 @@
-use crate::transform::TimedTransform;
+use crate::tree::transform::TimedTransform;
 use chrono::{DateTime, Utc};
 
 pub fn get_previous_transform(
@@ -83,8 +83,9 @@ pub fn get_next_transform(
 
 #[cfg(test)]
 mod test_get_previous {
+    use crate::TimedTransform;
+    use crate::tree::transform::Transform;
     use crate::utils::transform_list_utils::get_previous_transform;
-    use crate::{TimedTransform, Transform};
     use chrono::{DateTime, TimeZone, Utc};
     use nalgebra::{UnitQuaternion, Vector3};
 

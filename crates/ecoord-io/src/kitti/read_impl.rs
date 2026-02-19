@@ -1,6 +1,7 @@
 use crate::kitti::error::Error;
 use chrono::{DateTime, Utc};
-use ecoord_core::{FrameId, TimedTransform, Transform, TransformId, TransformTree};
+use ecoord_core::tree::transform::Transform;
+use ecoord_core::{FrameId, TimedTransform, TransformId, TransformTree};
 use nalgebra::{Isometry3, matrix};
 use std::collections::HashMap;
 use std::io::Read;

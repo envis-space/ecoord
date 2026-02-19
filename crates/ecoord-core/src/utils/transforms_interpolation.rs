@@ -1,5 +1,5 @@
-use crate::Transform;
-use crate::transform::TimedTransform;
+use crate::tree::transform::TimedTransform;
+use crate::tree::transform::Transform;
 use crate::utils::transform_list_utils::{get_previous_and_next_transform, get_previous_transform};
 use chrono::{DateTime, Duration, Utc};
 use nalgebra::{UnitQuaternion, Vector3};
@@ -122,7 +122,7 @@ pub(crate) fn interpolate_linearly(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Transform;
+    use crate::tree::transform::Transform;
     use approx::relative_eq;
     use chrono::TimeZone;
     use nalgebra::{Translation3, UnitQuaternion, Vector3};

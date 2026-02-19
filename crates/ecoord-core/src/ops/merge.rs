@@ -1,8 +1,9 @@
-use crate::{FrameId, FrameInfo, TransformId, TransformTree};
+use crate::{FrameId, FrameInfo, TransformTree};
 
 use crate::error::Error;
 
-use crate::transform_edge::TransformEdge;
+use crate::tree::edge::transform_edge::TransformEdge;
+use crate::tree::transform::TransformId;
 use std::collections::HashMap;
 
 /// Merges a list of transform trees to a single transform tree.
